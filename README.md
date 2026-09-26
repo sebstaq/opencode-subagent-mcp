@@ -60,6 +60,13 @@ you configured and a fixed list of destructive commands that ask: `rm -r`/`-rf`,
 command in a chain separately); the parent's permission mode is not visible to MCP servers, so
 the default comes from config; hooks, skills preloading, `memory` and per-agent MCP servers are not mapped.
 
+## Steering Claude
+
+Claude Code picks between its native Agent tool and this one on its own, so routing is
+unpredictable. To keep native subagents the default and delegate only well-scoped work to
+opencode, paste the snippet from [`docs/claude-md-snippet.md`](docs/claude-md-snippet.md) into
+your global `~/.claude/CLAUDE.md`.
+
 ## Configuration
 
 Optional `~/.config/opencode-subagent-mcp/config.json` (or `$OPENCODE_SUBAGENT_CONFIG`):
