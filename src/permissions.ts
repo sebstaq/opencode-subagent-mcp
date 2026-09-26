@@ -75,6 +75,64 @@ function pathPattern(spec: string | undefined): string {
   return spec;
 }
 
+/**
+ * Destructive or hard-to-undo bash commands that must ask even in `auto` mode.
+ *
+ * opencode matches these glob-like patterns against the command string with
+ * `*` = any characters and `?` = one character, anchored at both ends, and the
+ * last matching rule wins. They are appended after the allow-all baseline but
+ * before the user's Claude allow rules, so an explicit user allow (e.g.
+ * `Bash(git push:*)`) still overrides them. Patterns are intentionally broader
+ * than the exact invocations we care about; a false positive only prompts.
+ */
+export const AUTO_MODE_DANGEROUS_BASH_PATTERNS: readonly string[] = [
+  // Recursive and/or forced deletes.
+  "rm -rf*",
+  "rm -fr*",
+  "rm -r -f*",
+  "rm -f -r*",
+  "rm -Rf*",
+  "rm -fR*",
+  "rm --recursive*",
+  "rm * -rf*",
+  "rm * -fr*",
+  // Force pushes, including flags placed after the remote.
+  "git push -f*",
+  "git push *--force*",
+  "git push * -f*",
+  // Hard resets.
+  "git reset --hard*",
+  "git reset *--hard*",
+  // Forced clean.
+  "git clean -f*",
+  "git clean * -f*",
+  "git clean --force*",
+  // Discarding worktree changes.
+  "git checkout -- *",
+  "git checkout -f*",
+  "git restore *",
+  // Piping downloads straight into a shell.
+  "curl * | sh*",
+  "curl * | bash*",
+  "curl * | zsh*",
+  "wget * | sh*",
+  "wget * | bash*",
+  "wget * | zsh*",
+  // Privilege escalation and dangerous disk/permission commands.
+  "sudo *",
+  "chmod -R*",
+  "chmod * -R*",
+  "chmod --recursive*",
+  "chown -R*",
+  "chown * -R*",
+  "chown --recursive*",
+  "dd *",
+  "mkfs*",
+  // Publishing packages.
+  "npm publish*",
+  "pnpm publish*",
+];
+
 /** Baseline rules for a mode, before the user's Claude allow/ask/deny lists are applied. */
 export function modeBaseline(mode: PermissionMode): PermissionRule[] {
   const all = (action: PermissionRule["action"]): PermissionRule => ({
@@ -87,8 +145,17 @@ export function modeBaseline(mode: PermissionMode): PermissionRule[] {
       return [all("allow")];
     case "auto":
       // No classifier exists on the opencode side; auto approximates to "allow unless a
-      // Claude ask/deny rule says otherwise", with writes outside the project still asking.
-      return [all("allow"), { permission: "external_directory", pattern: "*", action: "ask" }];
+      // Claude ask/deny rule says otherwise". Destructive bash commands and writes outside
+      // the project still ask; user allow rules appended later can override both.
+      return [
+        all("allow"),
+        ...AUTO_MODE_DANGEROUS_BASH_PATTERNS.map((pattern): PermissionRule => ({
+          permission: "bash",
+          pattern,
+          action: "ask",
+        })),
+        { permission: "external_directory", pattern: "*", action: "ask" },
+      ];
     case "acceptEdits":
       return [
         all("allow"),

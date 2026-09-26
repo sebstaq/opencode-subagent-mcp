@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRuleset, modeBaseline, translateClaudeRule } from "./permissions.js";
+import {
+  AUTO_MODE_DANGEROUS_BASH_PATTERNS,
+  buildRuleset,
+  modeBaseline,
+  translateClaudeRule,
+} from "./permissions.js";
 
 describe("translateClaudeRule", () => {
   it("maps Bash prefix syntax", () => {
@@ -40,6 +45,37 @@ describe("buildRuleset", () => {
   it("bypassPermissions keeps only deny rules on top of allow-all", () => {
     const rules = buildRuleset({ mode: "bypassPermissions", claude, isolated: false });
     expect(rules.map((r) => r.action)).toEqual(["allow", "deny"]);
+  });
+
+  it("asks for every dangerous bash pattern in auto mode", () => {
+    const rules = modeBaseline("auto");
+    for (const pattern of AUTO_MODE_DANGEROUS_BASH_PATTERNS) {
+      expect(rules).toContainEqual({ permission: "bash", pattern, action: "ask" });
+    }
+    expect(AUTO_MODE_DANGEROUS_BASH_PATTERNS.length).toBeGreaterThan(0);
+  });
+
+  it("does not add ask rules in bypassPermissions", () => {
+    const rules = buildRuleset({
+      mode: "bypassPermissions",
+      claude: { allow: [], ask: [], deny: [] },
+      isolated: false,
+    });
+    expect(rules.some((r) => r.action === "ask")).toBe(false);
+  });
+
+  it("keeps a user Claude allow rule after the auto ask rules", () => {
+    const rules = buildRuleset({
+      mode: "auto",
+      claude: { allow: ["Bash(git push:*)"], ask: [], deny: [] },
+      isolated: false,
+    });
+    const lastAsk = rules.reduce((last, r, i) => (r.action === "ask" ? i : last), -1);
+    const allow = rules.findIndex(
+      (r) => r.permission === "bash" && r.pattern === "git push *" && r.action === "allow",
+    );
+    expect(lastAsk).toBeGreaterThanOrEqual(0);
+    expect(allow).toBeGreaterThan(lastAsk);
   });
 
   it("plan mode denies edits and bash", () => {
