@@ -13,15 +13,37 @@ anywhere; the server only runs the subagents you delegate to it, on a private
 
 ## Install
 
+Requires Node 22+, git, and the [`opencode`](https://opencode.ai) CLI logged in to the
+providers you want (`opencode auth login`).
+
+As a Claude Code plugin (also adds a skill that tells Claude when to delegate to opencode):
+
 ```sh
-git clone https://github.com/sebstaq/opencode-subagent-mcp
-cd opencode-subagent-mcp
-pnpm install && pnpm build
-claude mcp add -s user opencode -- node "$PWD/dist/index.js"
+claude plugin marketplace add sebstaq/opencode-subagent-mcp
+claude plugin install opencode-subagent-mcp@sebstaq-opencode
 ```
 
-Requires Node 22+, git, and the `opencode` CLI logged in to the providers you want
-(`opencode auth login`).
+Or as a plain MCP server:
+
+```sh
+claude mcp add -s user opencode -- npx -y opencode-subagent-mcp@0.1.0
+```
+
+## What it runs and sends
+
+- It starts a private `opencode serve` process on a random localhost port with a random
+  password, and stops it when Claude Code exits.
+- The prompts you delegate, and the files and command output the subagent reads, go to the
+  model provider you choose through opencode (by default opencode Go). Nothing else is sent
+  anywhere; the server has no telemetry and makes no other network calls.
+- It reads `~/.claude/settings.json`, the project's `.claude/settings.json` and
+  `.claude/settings.local.json`, and `.claude/agents/*.md` (user and project) to mirror your
+  permission rules and agent definitions, and
+  `~/.config/opencode-subagent-mcp/config.json` if present.
+- With `isolation: "worktree"` it creates git worktrees under the project's
+  `.claude/worktrees/` and removes them when they have no changes.
+
+This is an independent project, not affiliated with Anthropic or the opencode team.
 
 ## Tools
 

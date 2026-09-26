@@ -1,0 +1,12 @@
+{
+  "name": "sebstaq-opencode",
+  "owner": { "name": "sebstaq", "url": "https://github.com/sebstaq" },
+  "description": "Run Claude Code subagents on opencode models through a local MCP server.",
+  "plugins": [
+    {
+      "name": "opencode-subagent-mcp",
+      "source": "./",
+      "description": "Run Claude Code subagents on cheaper opencode models (DeepSeek, opencode Go)."
+    }
+  ]
+}

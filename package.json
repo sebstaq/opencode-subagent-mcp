@@ -1,7 +1,34 @@
 {
   "name": "opencode-subagent-mcp",
   "version": "0.1.0",
-  "description": "MCP server that runs opencode (e.g. DeepSeek via opencode Go) as Claude Code subagents, aiming for parity with native subagents",
+  "description": "Run Claude Code subagents on cheaper opencode models (DeepSeek, opencode Go) via an MCP server, with native subagent parity",
+  "keywords": [
+    "claude-code",
+    "claude",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "opencode",
+    "subagents",
+    "deepseek",
+    "ai-agents"
+  ],
+  "author": "sebstaq",
+  "homepage": "https://github.com/sebstaq/opencode-subagent-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sebstaq/opencode-subagent-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sebstaq/opencode-subagent-mcp/issues"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
@@ -12,7 +39,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
-    "smoke": "pnpm build && tsx scripts/smoke.ts"
+    "smoke": "pnpm build && tsx scripts/smoke.ts",
+    "prepublishOnly": "pnpm check && pnpm build"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.34.5",
