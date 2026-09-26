@@ -32,7 +32,10 @@ claude mcp add -s user opencode -- npx -y opencode-subagent-mcp@0.1.0
 ## What it runs and sends
 
 - It starts a private `opencode serve` process on a random localhost port with a random
-  password, and stops it when Claude Code exits.
+  password, and stops it when Claude Code exits. The password is generated for each run and
+  only used between this server and that local process. The process inherits your environment
+  so opencode can use the provider logins and API keys you already configured for it; this
+  server never reads, stores or sends those credentials itself.
 - The prompts you delegate, and the files and command output the subagent reads, go to the
   model provider you choose through opencode (by default opencode Go). Nothing else is sent
   anywhere; the server has no telemetry and makes no other network calls.
