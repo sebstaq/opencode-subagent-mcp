@@ -300,7 +300,8 @@ export class Runner {
   /**
    * Turns Claude-style tool allow/deny lists into opencode permissions to deny outright.
    * opencode hides a tool whose permission is denied for every pattern. (The per-prompt
-   * `tools` map is not used: opencode lets it replace the session's permission rules.)
+   * `tools` map is not used: it is deprecated and replaces the session's permission rules
+   * instead of merging, see opencode#35647 and #17607.)
    */
   private async deniedPermissions(
     oc: OpencodeClient,

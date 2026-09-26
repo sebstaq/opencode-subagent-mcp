@@ -132,7 +132,7 @@ export class OpencodeClient {
   /**
    * The newest messages, oldest first. opencode 1.18 fails to serialize user messages that
    * carry a json_schema `format`, so when a page includes one we shrink the page until it
-   * only holds assistant messages.
+   * only holds assistant messages (opencode#26929, #40169).
    */
   async recentMessages(
     directory: string,
