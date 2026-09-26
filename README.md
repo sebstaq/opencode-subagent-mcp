@@ -1,8 +1,11 @@
 # opencode-subagent-mcp
 
-Run Claude Code subagents on [opencode](https://opencode.ai) models — for example
-`opencode-go/deepseek-v4.1-flash` from an opencode Go subscription — while Claude Code
-itself keeps talking to Anthropic directly.
+Run Claude Code subagents on cheaper [opencode](https://opencode.ai) models — for example
+`opencode-go/deepseek-v4.1-flash` (DeepSeek) from an opencode Go subscription — while Claude
+Code itself keeps talking to Anthropic directly. Delegate searches, refactors, bug fixes, tests
+and research to a model that costs a fraction of Opus or Sonnet, and keep the tools you already
+use: background agents, resume via `send_message`, worktree isolation, `.claude/agents`
+definitions, permission prompts and structured output.
 
 It is a stdio MCP server. Your main Claude Code session is **not** proxied or routed
 anywhere; the server only runs the subagents you delegate to it, on a private
