@@ -39,10 +39,10 @@ jobs:
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           ./mcp-publisher login github-oidc
-          # npm can take a minute before the registry sees the new version.
-          for attempt in 1 2 3 4 5 6; do
+          # npm can take several minutes before the registry sees the new version.
+          for attempt in $(seq 20); do
             ./mcp-publisher publish && exit 0
-            sleep 20
+            sleep 30
           done
           exit 1
 
