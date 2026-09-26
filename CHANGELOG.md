@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.2] - 2026-09-26
+
+- Fail fast with the provider's message when opencode hits a usage limit or a long retry backoff, instead of hanging at 0 turns.
+- Send a progress heartbeat every minute while waiting, so long runs are not cut off by the MCP client's idle timeout.
+- Cancelling a `wait` call no longer stops the background agent.
+
 ## [0.1.1] - 2026-09-26
 
 - Publish to the official MCP registry as `io.github.sebstaq/opencode-subagent-mcp`.
