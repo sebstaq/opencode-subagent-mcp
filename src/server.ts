@@ -101,6 +101,7 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
                 title: "Decision",
                 enum: ["once", "always", "reject"],
                 enumNames: ["Allow once", "Allow for the rest of this agent's session", "Deny"],
+                default: "once",
               },
               feedback: {
                 type: "string",

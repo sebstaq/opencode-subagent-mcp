@@ -94,6 +94,8 @@ export const AUTO_MODE_DANGEROUS_BASH_PATTERNS: readonly string[] = [
   "rm -Rf*",
   "rm -fR*",
   "rm --recursive*",
+  "rm -r *",
+  "rm -R *",
   "rm * -rf*",
   "rm * -fr*",
   // Force pushes, including flags placed after the remote.
@@ -145,8 +147,8 @@ export function modeBaseline(mode: PermissionMode): PermissionRule[] {
       return [all("allow")];
     case "auto":
       // No classifier exists on the opencode side; auto approximates to "allow unless a
-      // Claude ask/deny rule says otherwise". Destructive bash commands and writes outside
-      // the project still ask; user allow rules appended later can override both.
+      // Claude ask/deny rule says otherwise". Only destructive bash commands ask (paths
+      // outside the project are allowed); user allow rules appended later override them.
       return [
         all("allow"),
         ...AUTO_MODE_DANGEROUS_BASH_PATTERNS.map((pattern): PermissionRule => ({
@@ -154,7 +156,6 @@ export function modeBaseline(mode: PermissionMode): PermissionRule[] {
           pattern,
           action: "ask",
         })),
-        { permission: "external_directory", pattern: "*", action: "ask" },
       ];
     case "acceptEdits":
       return [

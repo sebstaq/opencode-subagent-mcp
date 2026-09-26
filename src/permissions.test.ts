@@ -55,6 +55,11 @@ describe("buildRuleset", () => {
     expect(AUTO_MODE_DANGEROUS_BASH_PATTERNS.length).toBeGreaterThan(0);
   });
 
+  it("only asks for bash in auto mode, never for paths outside the project", () => {
+    const asks = modeBaseline("auto").filter((r) => r.action === "ask");
+    expect(asks.every((r) => r.permission === "bash")).toBe(true);
+  });
+
   it("does not add ask rules in bypassPermissions", () => {
     const rules = buildRuleset({
       mode: "bypassPermissions",

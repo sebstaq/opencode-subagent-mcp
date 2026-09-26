@@ -53,12 +53,12 @@ Requires Node 22+, git, and the `opencode` CLI logged in to the providers you wa
 
 Known gaps: agents do not appear in Claude Code's `/tasks` agent view; there is no
 fork-with-parent-context; the Workflow tool's `agent()` cannot target them; `auto` mode has no
-safety classifier (it allows everything except destructive commands (`rm -rf`, `git push
+safety classifier (it allows everything, including paths outside the project, except rules
+you configured and a fixed list of destructive commands that ask: `rm -r`/`-rf`, `git push
 --force`, `git reset --hard`, `git clean -f`, `git restore`/`git checkout --`, `curl | sh`,
-`sudo`, `chmod -R`/`chown -R`, `dd`, `mkfs`, `npm`/`pnpm publish`) and paths outside the
-project, which ask, plus rules you configured); the parent's permission mode is not visible to
-MCP servers, so the default
-comes from config; hooks, skills preloading, `memory` and per-agent MCP servers are not mapped.
+`sudo`, `chmod -R`/`chown -R`, `dd`, `mkfs`, `npm`/`pnpm publish`; opencode matches each
+command in a chain separately); the parent's permission mode is not visible to MCP servers, so
+the default comes from config; hooks, skills preloading, `memory` and per-agent MCP servers are not mapped.
 
 ## Configuration
 
