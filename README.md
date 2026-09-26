@@ -37,7 +37,8 @@ claude mcp add -s user opencode -- npx -y opencode-subagent-mcp@0.1.0
   so opencode can use the provider logins and API keys you already configured for it; this
   server never reads, stores or sends those credentials itself.
 - The prompts you delegate, and the files and command output the subagent reads, go to the
-  model provider you choose through opencode (by default opencode Go). Nothing else is sent
+  model provider you choose through opencode (by default opencode Go), under that provider's
+  data retention terms. opencode keeps session history in its local database on your machine. Nothing else is sent
   anywhere; the server has no telemetry and makes no other network calls.
 - It reads `~/.claude/settings.json`, the project's `.claude/settings.json` and
   `.claude/settings.local.json`, and `.claude/agents/*.md` (user and project) to mirror your
