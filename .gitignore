@@ -4,3 +4,4 @@ dist
 .env
 .claude/worktrees
 evals/results
+video/out
