@@ -1,0 +1,38 @@
+{
+  "name": "opencode-subagent-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that runs opencode (e.g. DeepSeek via opencode Go) as Claude Code subagents, aiming for parity with native subagents",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint --deny-warnings src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "smoke": "pnpm build && tsx scripts/smoke.ts"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@10.34.5",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "oxlint": "^1.85.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  },
+  "type": "module",
+  "bin": {
+    "opencode-subagent-mcp": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
