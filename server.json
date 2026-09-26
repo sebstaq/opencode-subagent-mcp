@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sebstaq/opencode-subagent-mcp",
+  "title": "opencode subagents",
+  "description": "Run Claude Code subagents on cheaper opencode models (DeepSeek, opencode Go) with native parity.",
+  "repository": {
+    "url": "https://github.com/sebstaq/opencode-subagent-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/sebstaq/opencode-subagent-mcp#readme",
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "opencode-subagent-mcp",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

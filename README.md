@@ -26,7 +26,7 @@ claude plugin install opencode-subagent-mcp@sebstaq-opencode
 Or as a plain MCP server:
 
 ```sh
-claude mcp add -s user opencode -- npx -y opencode-subagent-mcp@0.1.0
+claude mcp add -s user opencode -- npx -y opencode-subagent-mcp@0.1.1
 ```
 
 ## What it runs and sends

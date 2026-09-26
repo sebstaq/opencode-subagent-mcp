@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm check:versions "$GITHUB_REF_NAME"
+      - run: pnpm build
+
+      # Trusted publishing: npm exchanges the GitHub OIDC token, no NPM_TOKEN needed.
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+
+      - name: Publish to the MCP registry
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            /^## / { on = index($0, "[" v "]") > 0; next }
+            on' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+      # The Claude plugin directory tracks this branch, so it only moves once
+      # the npm version the plugin pins actually exists.
+      - name: Advance the release branch
+        run: git push origin "HEAD:refs/heads/release"

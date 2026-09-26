@@ -1,6 +1,7 @@
 {
   "name": "opencode-subagent-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "mcpName": "io.github.sebstaq/opencode-subagent-mcp",
   "description": "Run Claude Code subagents on cheaper opencode models (DeepSeek, opencode Go) via an MCP server, with native subagent parity",
   "keywords": [
     "claude-code",
@@ -40,7 +41,8 @@
     "test": "vitest run",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "smoke": "pnpm build && tsx scripts/smoke.ts",
-    "prepublishOnly": "pnpm check && pnpm build"
+    "prepublishOnly": "pnpm check && pnpm build",
+    "check:versions": "tsx scripts/check-versions.ts"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.34.5",
