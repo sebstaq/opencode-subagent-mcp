@@ -11,6 +11,7 @@ import type {
   OpencodeEvent,
   PromptBody,
   SessionInfo,
+  SessionStatus,
 } from "./opencode/client.js";
 import { buildRuleset, loadClaudePermissions, type PermissionMode } from "./permissions.js";
 import {
@@ -19,6 +20,9 @@ import {
   type Worktree,
   type WorktreeOutcome,
 } from "./worktree.js";
+
+/** Longest provider backoff to sit through before failing the run instead. */
+const MAX_RETRY_BACKOFF_MS = 2 * 60_000;
 
 export type JobStatus = "running" | "completed" | "failed" | "stopped" | "max_turns";
 
@@ -349,8 +353,9 @@ export class Runner {
         this.maybeComplete(props.sessionID as string);
         return;
       case "session.status": {
-        const status = props.status as { type?: string } | undefined;
+        const status = props.status as SessionStatus | undefined;
         if (status?.type === "idle") this.maybeComplete(props.sessionID as string);
+        if (status?.type === "retry") this.handleRetry(props.sessionID as string, status);
         return;
       }
     }
@@ -434,6 +439,11 @@ export class Runner {
       try {
         const oc = await this.client();
         const busy = (await oc.status(job.directory))[job.id];
+        if (busy?.type === "retry") {
+          this.finalizing.delete(job.id);
+          this.handleRetry(job.id, busy);
+          return;
+        }
         if (busy && busy.type !== "idle") return;
         const messages = await this.runMessages(oc, job);
         const last = messages.at(-1);
@@ -443,6 +453,37 @@ export class Runner {
         await this.complete(job, undefined, messages);
       } catch {
         // Retry on the next idle event or poll.
+      } finally {
+        this.finalizing.delete(job.id);
+      }
+    })();
+  }
+
+  /**
+   * opencode retries provider errors on its own, silently and for as long as the provider
+   * asks. Short backoffs are reported as progress; errors that need the user (an exhausted
+   * subscription limit) or a long backoff fail the run so the caller can fall back.
+   */
+  private handleRetry(sessionID: string, status: Extract<SessionStatus, { type: "retry" }>): void {
+    const job = this.jobs.get(sessionID);
+    if (!job || job.status !== "running" || job.stopped || this.finalizing.has(job.id)) return;
+    const message = status.message ?? "provider error";
+    const backoff = (status.next ?? 0) - Date.now();
+    if (!status.action?.reason && backoff <= MAX_RETRY_BACKOFF_MS) {
+      job.onProgress?.(
+        `retrying after a provider error (attempt ${status.attempt ?? 1}): ${message}`,
+      );
+      return;
+    }
+    this.finalizing.add(job.id);
+    void (async () => {
+      try {
+        const oc = await this.client();
+        await oc.abort(job.directory, job.id).catch(() => undefined);
+        await this.complete(
+          job,
+          `The model provider is unavailable: ${message}. Retry later or use a native subagent.`,
+        );
       } finally {
         this.finalizing.delete(job.id);
       }

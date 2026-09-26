@@ -5,7 +5,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { loadAgentDefinitions } from "./agents.js";
 import type { Config } from "./config.js";
-import { formatJob, formatResult } from "./format.js";
+import { formatAge, formatJob, formatResult } from "./format.js";
 import { OpencodeClient } from "./opencode/client.js";
 import { startOpencodeServer, type OpencodeServer } from "./opencode/server.js";
 import { PERMISSION_MODES } from "./permissions.js";
@@ -25,6 +25,9 @@ type Extra = {
     params: { progressToken: string | number; progress: number; message?: string };
   }) => Promise<void>;
 };
+
+/** Well under the MCP clients' idle timeouts (Claude Code: 30 minutes). */
+const HEARTBEAT_MS = 60_000;
 
 const text = (t: string, isError = false): CallToolResult => ({
   content: [{ type: "text", text: t }],
@@ -140,24 +143,40 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     return cwd ? resolve(base, cwd) : base;
   };
 
-  /** Waits for a job, streaming its tool activity as MCP progress notifications. */
-  const waitFor = async (job: Job, extra: Extra, timeoutMs?: number): Promise<CallToolResult> => {
+  /**
+   * Waits for a job, streaming its tool activity as MCP progress notifications. A heartbeat
+   * keeps quiet stretches (long model turns) from tripping the client's idle timeout.
+   * Cancelling the call stops the agent only when the call started it; cancelling a `wait`
+   * leaves the background agent running.
+   */
+  const waitFor = async (
+    job: Job,
+    extra: Extra,
+    opts: { timeoutMs?: number; stopOnCancel: boolean },
+  ): Promise<CallToolResult> => {
     const token = extra._meta?.progressToken;
     let progress = 0;
-    job.onProgress =
-      token === undefined
-        ? undefined
-        : (message) => {
-            void extra
-              .sendNotification({
-                method: "notifications/progress",
-                params: { progressToken: token, progress: ++progress, message },
-              })
-              .catch(() => undefined);
-          };
-    const onCancel = () => void runner.stop(job.id).catch(() => undefined);
+    const notify = (message: string) => {
+      if (token === undefined) return;
+      void extra
+        .sendNotification({
+          method: "notifications/progress",
+          params: { progressToken: token, progress: ++progress, message },
+        })
+        .catch(() => undefined);
+    };
+    job.onProgress = notify;
+    const heartbeat = setInterval(
+      () => notify(`still running · ${job.turns} turns · ${formatAge(job)}`),
+      HEARTBEAT_MS,
+    );
+    heartbeat.unref();
+    const onCancel = () => {
+      if (opts.stopOnCancel) void runner.stop(job.id).catch(() => undefined);
+    };
     extra.signal.addEventListener("abort", onCancel, { once: true });
     try {
+      const { timeoutMs } = opts;
       const result = await (timeoutMs
         ? Promise.race([
             job.done,
@@ -173,6 +192,7 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
           }),
       };
     } finally {
+      clearInterval(heartbeat);
       extra.signal.removeEventListener("abort", onCancel);
       job.onProgress = undefined;
     }
@@ -252,7 +272,7 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
             "Use wait to collect the result.",
         );
       }
-      return waitFor(job, extra);
+      return waitFor(job, extra, { stopOnCancel: true });
     }),
   );
 
@@ -273,7 +293,7 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     guard(async (args, extra) => {
       const job = await runner.resume(args.agent_id, args.message, args.max_turns);
       if (args.run_in_background) return text(`Resumed agent ${job.id} in the background.`);
-      return waitFor(job, extra);
+      return waitFor(job, extra, { stopOnCancel: true });
     }),
   );
 
@@ -290,7 +310,10 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     guard(async (args, extra) => {
       const job = runner.get(args.agent_id);
       if (!job) return text(`Unknown agent ${args.agent_id}`, true);
-      return waitFor(job, extra, args.timeout_seconds && args.timeout_seconds * 1000);
+      return waitFor(job, extra, {
+        timeoutMs: args.timeout_seconds && args.timeout_seconds * 1000,
+        stopOnCancel: false,
+      });
     }),
   );
 

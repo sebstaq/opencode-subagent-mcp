@@ -1,5 +1,19 @@
 import type { PermissionRule } from "../permissions.js";
 
+/** opencode's per-session run state; `retry` means it is backing off after a provider error. */
+export type SessionStatus =
+  | { type: "idle" }
+  | { type: "busy" }
+  | {
+      type: "retry";
+      attempt?: number;
+      message?: string;
+      /** Epoch ms of the next attempt. */
+      next?: number;
+      /** Set for errors that need the user, such as an exhausted subscription limit. */
+      action?: { reason?: string };
+    };
+
 export interface OpencodeEvent {
   directory?: string;
   type: string;
@@ -148,7 +162,7 @@ export class OpencodeClient {
     }
   }
 
-  status(directory: string): Promise<Record<string, { type: string }>> {
+  status(directory: string): Promise<Record<string, SessionStatus>> {
     return this.request("GET", "/session/status", { directory });
   }
 

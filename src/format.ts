@@ -28,7 +28,10 @@ export function formatResult(r: RunResult): string {
   return lines.join("\n");
 }
 
+export function formatAge(job: Job): string {
+  return `${(((job.finishedAt ?? Date.now()) - job.startedAt) / 1000).toFixed(0)}s`;
+}
+
 export function formatJob(job: Job): string {
-  const age = ((job.finishedAt ?? Date.now()) - job.startedAt) / 1000;
-  return `- ${job.id} [${job.status}] "${job.description}" · ${job.model} · ${job.turns} turns · ${age.toFixed(0)}s · ${job.directory}`;
+  return `- ${job.id} [${job.status}] "${job.description}" · ${job.model} · ${job.turns} turns · ${formatAge(job)} · ${job.directory}`;
 }
