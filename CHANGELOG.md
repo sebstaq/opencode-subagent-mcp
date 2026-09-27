@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.3] - 2026-09-27
 
 - Agent ids from before an MCP server or Claude Code restart now work with `wait`, `stop` and `send_message`: the session is adopted from opencode's local store, reported as completed or stopped (interrupted) from its messages, and can be continued.
 
