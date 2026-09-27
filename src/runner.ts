@@ -84,6 +84,10 @@ export interface StartOptions {
 /** Tools subagents never get, matching native behaviour (no nested agents, no user questions). */
 const ALWAYS_DISABLED = ["task", "question"];
 
+/** Error for an agent adopted from disk whose last run never finished (the server restarted). */
+const INTERRUPTED =
+  'interrupted: the MCP server restarted while this agent was running. Continue it with send_message (e.g. "continue").';
+
 export class Job {
   readonly id: string;
   status: JobStatus = "running";
@@ -157,10 +161,6 @@ export class Runner {
     return [...this.jobs.values()];
   }
 
-  get(id: string): Job | undefined {
-    return this.jobs.get(id);
-  }
-
   private running(): number {
     return this.list().filter((j) => j.status === "running").length;
   }
@@ -230,35 +230,63 @@ export class Runner {
     return job;
   }
 
+  /**
+   * Returns the job for an agent id, loading it from its opencode session when it belongs to an
+   * earlier MCP process. Adopted sessions are not running here, so their state is derived from
+   * their stored messages. Throws when opencode has no such session.
+   */
+  async adopt(agentId: string): Promise<Job> {
+    const known = this.jobs.get(agentId);
+    if (known) return known;
+    const oc = await this.client();
+    let session: SessionInfo;
+    try {
+      session = await oc.getSession(agentId);
+    } catch {
+      throw new Error(`unknown agent ${agentId}`);
+    }
+    const mode = this.config.defaultPermissionMode;
+    const ruleset = buildRuleset({
+      mode,
+      claude: await loadClaudePermissions(session.directory),
+      isolated: false,
+      disallowedTools: ALWAYS_DISABLED,
+    });
+    const job = new Job(
+      session.id,
+      session.title,
+      session.directory,
+      this.config.defaultModel,
+      mode,
+      {
+        model: parseModel(this.config.defaultModel),
+        agent: "general",
+      },
+      ruleset,
+    );
+    this.jobs.set(job.id, job);
+    this.owners.set(job.id, job);
+    await this.settleAdopted(oc, job);
+    return job;
+  }
+
+  /**
+   * Finishes an adopted job from its stored messages: a final assistant message that completed
+   * normally goes through the normal completion path, anything else (unfinished or unanswered)
+   * finished as stopped with an interruption error, since the server running it is gone.
+   */
+  private async settleAdopted(oc: OpencodeClient, job: Job): Promise<void> {
+    const messages = await oc.recentMessages(job.directory, job.id).catch(() => []);
+    const last = messages.at(-1);
+    const completed = last?.info.role === "assistant" && Boolean(last.info.time?.completed);
+    if (!completed) job.stopped = true;
+    await this.complete(job, completed ? undefined : INTERRUPTED, messages);
+  }
+
   /** Resumes an agent with a new message, keeping its full history (SendMessage parity). */
   async resume(agentId: string, message: string, maxTurns?: number): Promise<Job> {
-    let job = this.jobs.get(agentId);
-    const oc = await this.client();
-    if (!job) {
-      // Session from an earlier MCP process: opencode still has it on disk.
-      const session = await oc.getSession(agentId);
-      const mode = this.config.defaultPermissionMode;
-      const ruleset = buildRuleset({
-        mode,
-        claude: await loadClaudePermissions(session.directory),
-        isolated: false,
-        disallowedTools: ALWAYS_DISABLED,
-      });
-      job = new Job(
-        session.id,
-        session.title,
-        session.directory,
-        this.config.defaultModel,
-        mode,
-        {
-          model: parseModel(this.config.defaultModel),
-          agent: "general",
-        },
-        ruleset,
-      );
-      this.jobs.set(job.id, job);
-      this.owners.set(job.id, job);
-    } else if (job.status === "running") {
+    const job = await this.adopt(agentId);
+    if (job.status === "running") {
       throw new Error(`agent ${agentId} is still running; wait for it or stop it first`);
     }
     if (job.worktree && !job.result?.worktree?.kept) {
@@ -291,8 +319,7 @@ export class Runner {
   }
 
   async stop(agentId: string): Promise<Job> {
-    const job = this.jobs.get(agentId);
-    if (!job) throw new Error(`unknown agent ${agentId}`);
+    const job = await this.adopt(agentId);
     if (job.status === "running") {
       job.stopped = true;
       await (await this.client()).abort(job.directory, job.id);

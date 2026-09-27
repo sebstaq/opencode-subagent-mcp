@@ -30,4 +30,7 @@ reviews you would have to redo to trust), or when the task needs this conversati
   diff and merge the kept branch yourself.
 - Use `run_in_background: true` for independent tasks and collect them with `wait`. Continue a
   finished agent with `send_message` instead of starting over.
+- An `agent_id` survives a restart of the MCP server or Claude Code session: `wait` and `stop`
+  still report what happened to it, and `send_message` continues it. An agent that was running
+  through a restart comes back as `stopped` with an interruption error; send it "continue".
 - Review in proportion to risk: spot-check claims and run the tests, don't redo the work.

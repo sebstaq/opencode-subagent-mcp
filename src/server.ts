@@ -282,7 +282,9 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
       title: "Continue an opencode subagent",
       description:
         "Send a follow-up message to a finished opencode subagent by agent_id. It resumes with its " +
-        "full previous history (and its worktree, if one was kept) and returns its new final report.",
+        "full previous history (and its worktree, if one was kept) and returns its new final report. " +
+        "Also works for agent_ids from before a restart of the MCP server or Claude Code session, " +
+        "and for agents that were interrupted by such a restart.",
       inputSchema: {
         agent_id: z.string(),
         message: z.string(),
@@ -301,15 +303,16 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     "wait",
     {
       title: "Wait for an opencode subagent",
-      description: "Wait for a background opencode subagent and return its result.",
+      description:
+        "Wait for a background opencode subagent and return its result. agent_ids from before a " +
+        "restart of the MCP server still work.",
       inputSchema: {
         agent_id: z.string(),
         timeout_seconds: z.number().positive().optional().describe("Return early if still running"),
       },
     },
     guard(async (args, extra) => {
-      const job = runner.get(args.agent_id);
-      if (!job) return text(`Unknown agent ${args.agent_id}`, true);
+      const job = await runner.adopt(args.agent_id);
       return waitFor(job, extra, {
         timeoutMs: args.timeout_seconds && args.timeout_seconds * 1000,
         stopOnCancel: false,
@@ -321,7 +324,9 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     "stop",
     {
       title: "Stop an opencode subagent",
-      description: "Abort a running opencode subagent. Returns what it produced so far.",
+      description:
+        "Abort a running opencode subagent. Returns what it produced so far. agent_ids from before " +
+        "a restart of the MCP server still work.",
       inputSchema: { agent_id: z.string() },
     },
     guard(async (args) => {
@@ -335,7 +340,10 @@ export function createServer(config: Config): { mcp: McpServer; shutdown: () => 
     "list",
     {
       title: "List opencode subagents",
-      description: "List this session's opencode subagents and the available agent types.",
+      description:
+        "List this session's opencode subagents and the available agent types. It shows agents " +
+        "started or used since this MCP server started; agents from before a restart are not " +
+        "listed but their agent_id still works with wait, send_message and stop.",
       inputSchema: { cwd: z.string().optional() },
       annotations: { readOnlyHint: true },
     },

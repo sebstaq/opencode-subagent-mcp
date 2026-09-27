@@ -51,13 +51,18 @@ This is an independent project, not affiliated with Anthropic or the opencode te
 
 ## Tools
 
-| Tool           | Native equivalent                  | What it does                                                         |
-| -------------- | ---------------------------------- | -------------------------------------------------------------------- |
-| `agent`        | Agent tool                         | Run a subagent; returns its final report, usage and worktree outcome |
-| `send_message` | SendMessage                        | Continue a finished agent with its full history                      |
-| `wait`         | background completion notification | Collect a `run_in_background` agent (optionally with a timeout)      |
-| `stop`         | TaskStop                           | Abort a running agent and return what it produced                    |
-| `list`         | /agents                            | This session's agents, Claude agent definitions and opencode agents  |
+| Tool           | Native equivalent                  | What it does                                                          |
+| -------------- | ---------------------------------- | --------------------------------------------------------------------- |
+| `agent`        | Agent tool                         | Run a subagent; returns its final report, usage and worktree outcome  |
+| `send_message` | SendMessage                        | Continue a finished agent with its full history; also after a restart |
+| `wait`         | background completion notification | Collect a `run_in_background` agent (optionally with a timeout)       |
+| `stop`         | TaskStop                           | Abort a running agent and return what it produced                     |
+| `list`         | /agents                            | This session's agents, Claude agent definitions and opencode agents   |
+
+An `agent_id` keeps working after the MCP server or Claude Code restarts: `wait` and `stop`
+return what happened to it, and `send_message` continues it. Agents from before a restart do not
+appear in `list` until their id is used again, but they still exist in opencode's local session
+store.
 
 `agent` parameters: `description`, `prompt`, `subagent_type`, `model`, `isolation: "worktree"`,
 `permission_mode`, `tools`, `disallowed_tools`, `max_turns`, `effort`, `output_schema`,
@@ -73,7 +78,7 @@ This is an independent project, not affiliated with Anthropic or the opencode te
 | Permission prompts surface in the main session             | opencode `ask` rules are shown as MCP elicitation dialogs (allow once / always / deny, with optional feedback)                                                                             |
 | Permission modes                                           | `default`, `acceptEdits`, `auto`, `bypassPermissions`, `plan` mapped to opencode rules; your Claude `permissions.allow/ask/deny` from user, project and local settings apply               |
 | Background agents with completion notification             | Claude Code moves long MCP calls to the background automatically and notifies when they finish; `run_in_background` + `wait` for explicit control                                          |
-| Resume with full history                                   | `send_message` (also works for agents from earlier sessions, since opencode persists them)                                                                                                 |
+| Resume with full history                                   | `send_message` (also works for agents from earlier sessions or after a restart, since opencode persists them)                                                                              |
 | `.claude/agents/*.md` definitions                          | Used via `subagent_type`: prompt, `tools`, `disallowedTools`, `permissionMode`, `maxTurns`, `effort`, `isolation`. `model` applies only when it is an opencode `provider/model`            |
 | `maxTurns` returns partial output                          | Same; status `max_turns`, resumable                                                                                                                                                        |
 | Progress in the UI                                         | Tool calls are sent as MCP progress notifications                                                                                                                                          |
