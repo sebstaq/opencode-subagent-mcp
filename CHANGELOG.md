@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] - 2026-11-04
+
+- Fail at once with a clear error when the model is unknown or its provider is not logged in, instead of hanging until the MCP client times out (10 minutes). The error points to `opencode models` and `opencode auth login`.
+- The MCP handshake reports the real package version instead of 0.1.0.
+
 ## [0.1.3] - 2026-09-27
 
 - Agent ids from before an MCP server or Claude Code restart now work with `wait`, `stop` and `send_message`: the session is adopted from opencode's local store, reported as completed or stopped (interrupted) from its messages, and can be continued.
