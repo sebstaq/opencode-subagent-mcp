@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Config } from "./config.js";
 import type { MessageWithParts, OpencodeClient, SessionInfo } from "./opencode/client.js";
-import { Runner, type Host } from "./runner.js";
+import { Job, Runner, type Host } from "./runner.js";
 
 const config: Config = {
   defaultModel: "test/model",
@@ -93,5 +93,50 @@ describe("Runner.adopt", () => {
     const first = await runner.adopt("ses_1");
     client.session = undefined;
     expect(await runner.adopt("ses_1")).toBe(first);
+  });
+});
+
+/** A running job as `start` leaves it, registered on a runner backed by `client`. */
+const running = (client: FakeClient) => {
+  const runner = new Runner(config, async () => client as unknown as OpencodeClient, host);
+  const job = new Job(
+    "ses_1",
+    "probe",
+    "/tmp/ocsa",
+    "opencode-go/x",
+    "default",
+    {
+      model: { providerID: "opencode-go", modelID: "x" },
+      agent: "general",
+    },
+    [],
+  );
+  const maps = runner as unknown as { jobs: Map<string, Job>; owners: Map<string, Job> };
+  maps.jobs.set(job.id, job);
+  maps.owners.set(job.id, job);
+  return { runner, job };
+};
+
+describe("Runner errors before the first reply", () => {
+  it("fails the run when opencode reports session.error and idles without a reply", async () => {
+    const client = Object.assign(new FakeClient(), { status: async () => ({}) });
+    client.messages = [user()];
+    const { runner, job } = running(client);
+    runner.handleEvent({
+      type: "session.error",
+      properties: {
+        sessionID: "ses_1",
+        error: {
+          name: "UnknownError",
+          data: { message: "Model not found: opencode-go/x. Did you mean: x?\n    at stack" },
+        },
+      },
+    });
+    runner.handleEvent({ type: "session.idle", properties: { sessionID: "ses_1" } });
+    const result = await job.done;
+    expect(result.status).toBe("failed");
+    expect(result.error).toMatch(/^Model not found: opencode-go\/x\. Did you mean: x\? Check/);
+    expect(result.error).toContain("opencode auth login");
+    expect(result.error).not.toContain("at stack");
   });
 });

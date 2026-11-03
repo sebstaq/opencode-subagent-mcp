@@ -372,7 +372,10 @@ export class Runner {
         const job = this.owners.get(props.sessionID as string);
         const err = props.error as { name?: string; data?: { message?: string } } | undefined;
         if (job && job.id === props.sessionID && err && err.name !== "MessageAbortedError") {
-          job.lastError = err.data?.message ?? err.name;
+          const message = err.data?.message ?? err.name ?? "unknown error";
+          job.lastError = /model not found/i.test(message)
+            ? `${message.split("\n")[0]} Check the model name (\`opencode models\` lists them) and that its provider is logged in (\`opencode auth login\`).`
+            : message;
         }
         return;
       }
@@ -476,7 +479,9 @@ export class Runner {
         const last = messages.at(-1);
         const settled =
           last?.info.role === "assistant" && (last.info.time?.completed || last.info.error);
-        if (!settled && !job.stopped) return;
+        // opencode reports errors raised before the model answers (unknown model, provider not
+        // logged in) only as session.error and then goes idle without an assistant message.
+        if (!settled && !job.stopped && !job.lastError) return;
         await this.complete(job, undefined, messages);
       } catch {
         // Retry on the next idle event or poll.
