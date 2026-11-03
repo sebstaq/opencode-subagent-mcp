@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -16,6 +17,13 @@ import {
   type PermissionReply,
   type PermissionRequest,
 } from "./runner.js";
+
+/** Read at runtime: package.json sits one level above both src/ and dist/. */
+const VERSION = (
+  JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+  }
+).version;
 
 type Extra = {
   signal: AbortSignal;
@@ -46,7 +54,7 @@ const guard =
 
 export function createServer(config: Config): { mcp: McpServer; shutdown: () => void } {
   const mcp = new McpServer(
-    { name: "opencode-subagent-mcp", version: "0.1.0" },
+    { name: "opencode-subagent-mcp", version: VERSION },
     {
       instructions:
         "Runs subagents on opencode models (default: " +
